@@ -1,7 +1,11 @@
 
 # Laptop Setup Script
 
-This PowerShell script automates the installation of essential developer tools on a Windows machine using [Chocolatey](https://chocolatey.orgript Does
+This PowerShell script automates the installation of essential developer tools on a Windows machine using [Chocolatey
+
+---
+
+## ✅ What This Script Does
 - Installs common development tools:
   - Visual Studio 2022
   - VS Code
@@ -17,9 +21,11 @@ This PowerShell script automates the installation of essential developer tools o
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start Options
 
-### **Run Directly from PowerShell**
+### **Option 1: Run Directly from GitHub (Fast)**
+> ⚠️ This method may be blocked by antivirus because it uses `Invoke-Expression`. If that happens, use Option 2.
+
 Open **PowerShell as Administrator** and run:
 
 ```powershell
