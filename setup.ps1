@@ -44,7 +44,7 @@ foreach ($pkg in $packages) {
         choco install $pkg -y --ignore-checksums --timeout=600
         Write-Host "$pkg installed successfully."
     } catch {
-        Write-Host "Failed to install $pkg: $_"
+        Write-Host "Failed to install ${pkg}: $_"
     }
 }
 
