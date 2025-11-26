@@ -35,6 +35,7 @@ $packages = @(
 
     # Database
     "sql-server-2022"
+    "sql-server-management-studio"
 )
 
 # Install packages
