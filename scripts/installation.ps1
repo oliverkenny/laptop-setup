@@ -1,8 +1,10 @@
 
-# Laptop Setup Script using Chocolatey
-# -------------------------------------
-# This script installs common developer tools and handles errors gracefully.
-# Run as Administrator.
+# System Installation Script
+# --------------------------
+# This script handles system-level installations and configurations.
+# Package installations are now handled by chocolatey-packages.ps1
+
+Write-Host "Starting system installation..." -ForegroundColor Cyan
 
 # Ensure execution policy and TLS settings
 Set-ExecutionPolicy Bypass -Scope Process -Force
@@ -10,44 +12,17 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 
 # Install Chocolatey if not already installed
 if (!(Get-Command choco.exe -ErrorAction SilentlyContinue)) {
-    Write-Host "Installing Chocolatey..."
+    Write-Host "Installing Chocolatey..." -ForegroundColor Yellow
     iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+    Write-Host "Chocolatey installed successfully." -ForegroundColor Green
 } else {
-    Write-Host "Chocolatey is already installed."
+    Write-Host "Chocolatey is already installed." -ForegroundColor Green
 }
 
-# Define packages
-$packages = @(
-    # Browsers
-    "googlechrome",
+# Add any other system-level configurations here
+# For example: Windows features, registry settings, etc.
 
-    # Editors & IDEs
-    "vscode",
-    "visualstudio2022professional",
-    "notepadplusplus",
-
-    # Dev Tools
-    "git",
-    "nvm.install",
-    "oh-my-posh",
-    "postman",
-    "conemu",
-
-    # Database
-    "sql-server-2022"
-    "sql-server-management-studio"
-)
-
-# Install packages
-foreach ($pkg in $packages) {
-    Write-Host "Installing $pkg..."
-    try {
-        choco install $pkg -y --ignore-checksums --timeout=600
-        Write-Host "$pkg installed successfully."
-    } catch {
-        Write-Host "Failed to install ${pkg}: $_"
-    }
-}
+Write-Host "System installation completed." -ForegroundColor Green
 
 # Optional: Configure NVM after install
 if (Get-Command nvm -ErrorAction SilentlyContinue) {

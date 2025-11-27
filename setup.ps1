@@ -1,58 +1,22 @@
-
-# Laptop Setup Script using Chocolatey
-# -------------------------------------
-# This script installs common developer tools and handles errors gracefully.
-# Run as Administrator.
-
-# Ensure execution policy and TLS settings
-Set-ExecutionPolicy Bypass -Scope Process -Force
-[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-
-# Install Chocolatey if not already installed
-if (!(Get-Command choco.exe -ErrorAction SilentlyContinue)) {
-    Write-Host "Installing Chocolatey..."
-    iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-} else {
-    Write-Host "Chocolatey is already installed."
-}
-
-# Define packages
-$packages = @(
-    # Browsers
-    "googlechrome",
-
-    # Editors & IDEs
-    "vscode",
-    "visualstudio2022professional",
-    "notepadplusplus",
-
-    # Dev Tools
-    "git",
-    "nvm.install",
-    "oh-my-posh",
-    "postman",
-    "conemu",
-
-    # Database
-    "sql-server-2022"
-    "sql-server-management-studio"
+# Main setup script that orchestrates the installation process
+param(
+    [switch]$SkipPackages
 )
 
-# Install packages
-foreach ($pkg in $packages) {
-    Write-Host "Installing $pkg..."
-    try {
-        choco install $pkg -y --ignore-checksums --timeout=600
-        Write-Host "$pkg installed successfully."
-    } catch {
-        Write-Host "Failed to install ${pkg}: $_"
-    }
+Write-Host "=== Setup Script ===" -ForegroundColor Green
+
+# Execute installation script
+Write-Host "Running installation script..." -ForegroundColor Yellow
+& ".\scripts\installation.ps1"
+
+# Execute PowerShell profile setup
+Write-Host "Setting up PowerShell profile..." -ForegroundColor Yellow
+& ".\scripts\powershell-profile-setup.ps1"
+
+# Handle Chocolatey packages unless skipped
+if (-not $SkipPackages) {
+    Write-Host "Setting up Chocolatey packages..." -ForegroundColor Yellow
+    & ".\scripts\chocolatey-packages.ps1"
 }
 
-# Optional: Configure NVM after install
-if (Get-Command nvm -ErrorAction SilentlyContinue) {
-    Write-Host "Configuring NVM..."
-    nvm install latest
-    nvm use latest
-}
-
+Write-Host "=== Setup Complete! ===" -ForegroundColor Green
