@@ -1,142 +1,137 @@
 # PowerShell Profile Setup Script
-# ---------------------------------
-# This script sets up a custom PowerShell profile with interactive configuration
+# Sets up PowerShell profile with custom configurations
 
-Write-Host "=== PowerShell Profile Setup ===" -ForegroundColor Cyan
+function Get-UserInput {
+    param(
+        [string]$Prompt,
+        [string]$DefaultValue = "",
+        [switch]$IsPath
+    )
+    
+    if ($DefaultValue) {
+        $fullPrompt = "$Prompt (default: $DefaultValue): "
+    } else {
+        $fullPrompt = "$Prompt : "
+    }
+    
+    do {
+        $input = Read-Host $fullPrompt
+        if ([string]::IsNullOrWhiteSpace($input) -and $DefaultValue) {
+            $input = $DefaultValue
+        }
+        
+        if ($IsPath -and $input) {
+            # Validate and create path if needed
+            try {
+                $expandedPath = [Environment]::ExpandEnvironmentVariables($input)
+                if (!(Test-Path $expandedPath)) {
+                    $create = Read-Host "Path '$expandedPath' doesn't exist. Create it? (y/n)"
+                    if ($create -eq 'y' -or $create -eq 'yes') {
+                        New-Item -Path $expandedPath -ItemType Directory -Force | Out-Null
+                        Write-Host "  + Created directory: $expandedPath" -ForegroundColor Green
+                    } else {
+                        Write-Host "  ! Please provide a valid path" -ForegroundColor Yellow
+                        continue
+                    }
+                }
+                return $expandedPath
+            } catch {
+                Write-Host "  ! Invalid path format" -ForegroundColor Red
+                continue
+            }
+        }
+        
+        if (![string]::IsNullOrWhiteSpace($input)) {
+            return $input
+        }
+        
+        if (!$DefaultValue) {
+            Write-Host "  ! This field is required" -ForegroundColor Yellow
+        }
+    } while ($true)
+}
 
-# Check if profile exists
-if (Test-Path $PROFILE) {
-    $overwrite = Read-Host "PowerShell profile already exists. Overwrite it? (y/N)"
-    if ($overwrite -ne 'y' -and $overwrite -ne 'Y' -and $overwrite -ne 'yes') {
-        Write-Host "PowerShell profile setup skipped." -ForegroundColor Yellow
-        return
+function Set-PowerShellProfile {
+    Write-Host "PowerShell Profile Configuration" -ForegroundColor Cyan
+    Write-Host "This will set up your PowerShell profile with useful aliases and functions." -ForegroundColor Yellow
+    Write-Host ""
+
+    # Get user preferences
+    Write-Host "Configuration Questions:" -ForegroundColor Green
+    Write-Host "Please provide the following information:" -ForegroundColor Gray
+    Write-Host ""
+
+    # Root repository path (where this setup repo lives)
+    $rootRepo = Get-UserInput -Prompt "Root repository path (where this laptop-setup repo is located)" -DefaultValue "C:\Users\$env:USERNAME\Documents\Repos\laptop-setup" -IsPath
+
+    # General repositories path
+    $reposPath = Get-UserInput -Prompt "General repositories folder (where you clone other repos)" -DefaultValue "C:\Users\$env:USERNAME\Documents\Repos" -IsPath
+
+    # Scripts path
+    $scriptsPath = Get-UserInput -Prompt "Personal scripts folder (for your custom scripts)" -DefaultValue "C:\Users\$env:USERNAME\Documents\Scripts" -IsPath
+
+    Write-Host ""
+    Write-Host "Creating PowerShell profile..." -ForegroundColor Yellow
+
+    # Read the template
+    $templatePath = Join-Path $PSScriptRoot "powershell-profile-template.ps1"
+    if (!(Test-Path $templatePath)) {
+        throw "Template file not found: $templatePath"
+    }
+
+    $templateContent = Get-Content $templatePath -Raw
+
+    # Replace placeholders
+    $profileContent = $templateContent -replace '\{\{ROOTREPO\}\}', $rootRepo
+    $profileContent = $profileContent -replace '\{\{REPOSPATH\}\}', $reposPath
+    $profileContent = $profileContent -replace '\{\{SCRIPTPATH\}\}', $scriptsPath
+
+    # Ensure PowerShell profile directory exists
+    $profileDir = Split-Path $PROFILE -Parent
+    if (!(Test-Path $profileDir)) {
+        New-Item -Path $profileDir -ItemType Directory -Force | Out-Null
+    }
+
+    # Write the profile
+    try {
+        $profileContent | Out-File -FilePath $PROFILE -Encoding UTF8 -Force
+        Write-Host "  + PowerShell profile created: $PROFILE" -ForegroundColor Green
+        
+        # Show what was configured
+        Write-Host ""
+        Write-Host "Profile Configuration Summary:" -ForegroundColor Cyan
+        Write-Host "  + Root repository: $rootRepo" -ForegroundColor Gray
+        Write-Host "  + Repositories folder: $reposPath" -ForegroundColor Gray
+        Write-Host "  + Scripts folder: $scriptsPath" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "Available aliases and functions:" -ForegroundColor Green
+        Write-Host "  + 'repos' - Navigate to repositories folder" -ForegroundColor Gray
+        Write-Host "  + 'scripts' - Navigate to scripts folder" -ForegroundColor Gray
+        Write-Host "  + 'root' - Navigate to root repository" -ForegroundColor Gray
+        Write-Host "  + 'll' - Enhanced directory listing" -ForegroundColor Gray
+        Write-Host "  + 'grep' - Search text in files" -ForegroundColor Gray
+        Write-Host "  + 'touch' - Create new files" -ForegroundColor Gray
+        Write-Host "  + 'which' - Find command location" -ForegroundColor Gray
+        Write-Host "  + Git aliases and Oh-My-Posh integration" -ForegroundColor Gray
+        Write-Host "  + Chocolatey tab completion" -ForegroundColor Gray
+        
+    } catch {
+        Write-Host "  ! Error creating PowerShell profile: $($_.Exception.Message)" -ForegroundColor Red
+        throw
     }
 }
 
-# Gather configuration from user
-Write-Host "`nConfiguring your development environment:" -ForegroundColor Green
-Write-Host "=========================================" -ForegroundColor Green
+# Main execution
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "      PowerShell Profile Setup         " -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
 
-# Root Repository Directory
-Write-Host "`n1. Root Repository Directory" -ForegroundColor Yellow
-Write-Host "   This is where PowerShell will navigate to on startup."
-Write-Host "   Example: C:\Dev, C:\Users\$env:USERNAME\Documents\Projects"
-do {
-    $rootRepo = Read-Host "   Enter path (or press Enter to skip)"
-    if ($rootRepo -and -not (Test-Path $rootRepo)) {
-        $create = Read-Host "   Directory doesn't exist. Create it? (y/N)"
-        if ($create -eq 'y' -or $create -eq 'Y' -or $create -eq 'yes') {
-            try {
-                New-Item -Path $rootRepo -ItemType Directory -Force | Out-Null
-                Write-Host "   ✓ Directory created." -ForegroundColor Green
-                break
-            } catch {
-                Write-Host "   ✗ Failed to create directory. Please try again." -ForegroundColor Red
-            }
-        }
-    } elseif ($rootRepo) {
-        Write-Host "   ✓ Directory exists." -ForegroundColor Green
-        break
-    } else {
-        break
-    }
-} while ($true)
-
-# Repositories Path
-Write-Host "`n2. Repositories Directory" -ForegroundColor Yellow
-Write-Host "   Where your Git repositories are stored."
-Write-Host "   Example: C:\Repos, C:\Users\$env:USERNAME\source\repos"
-do {
-    $reposPath = Read-Host "   Enter path (or press Enter to skip)"
-    if ($reposPath -and -not (Test-Path $reposPath)) {
-        $create = Read-Host "   Directory doesn't exist. Create it? (y/N)"
-        if ($create -eq 'y' -or $create -eq 'Y' -or $create -eq 'yes') {
-            try {
-                New-Item -Path $reposPath -ItemType Directory -Force | Out-Null
-                Write-Host "   ✓ Directory created." -ForegroundColor Green
-                break
-            } catch {
-                Write-Host "   ✗ Failed to create directory. Please try again." -ForegroundColor Red
-            }
-        }
-    } elseif ($reposPath) {
-        Write-Host "   ✓ Directory exists." -ForegroundColor Green
-        break
-    } else {
-        break
-    }
-} while ($true)
-
-# Scripts Path
-Write-Host "`n3. PowerShell Scripts Directory" -ForegroundColor Yellow
-Write-Host "   Where you store your custom PowerShell scripts."
-Write-Host "   Example: C:\Scripts, C:\Users\$env:USERNAME\Documents\Scripts"
-do {
-    $scriptPath = Read-Host "   Enter path (or press Enter to skip)"
-    if ($scriptPath -and -not (Test-Path $scriptPath)) {
-        $create = Read-Host "   Directory doesn't exist. Create it? (y/N)"
-        if ($create -eq 'y' -or $create -eq 'Y' -or $create -eq 'yes') {
-            try {
-                New-Item -Path $scriptPath -ItemType Directory -Force | Out-Null
-                Write-Host "   ✓ Directory created." -ForegroundColor Green
-                break
-            } catch {
-                Write-Host "   ✗ Failed to create directory. Please try again." -ForegroundColor Red
-            }
-        }
-    } elseif ($scriptPath) {
-        Write-Host "   ✓ Directory exists." -ForegroundColor Green
-        break
-    } else {
-        break
-    }
-} while ($true)
-
-Write-Host "`nGenerating PowerShell profile..." -ForegroundColor Green
-
-# Load the profile template
-$templatePath = Join-Path $PSScriptRoot "powershell-profile-template.ps1"
-if (-not (Test-Path $templatePath)) {
-    Write-Host "Error: Profile template not found at $templatePath" -ForegroundColor Red
-    return
-}
-
-# Read template and replace placeholders
-$profileContent = Get-Content $templatePath -Raw
-$profileContent = $profileContent.Replace("{{ROOTREPO}}", $rootRepo)
-$profileContent = $profileContent.Replace("{{REPOSPATH}}", $reposPath)
-$profileContent = $profileContent.Replace("{{SCRIPTPATH}}", $scriptPath)
-
-# Ensure the profile directory exists
-$profileDir = Split-Path $PROFILE -Parent
-if (-not (Test-Path $profileDir)) {
-    New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
-}
-
-# Write the profile content
-$profileContent | Out-File -FilePath $PROFILE -Encoding UTF8
-
-Write-Host "`n✓ PowerShell profile created successfully!" -ForegroundColor Green
-Write-Host "Profile location: $PROFILE" -ForegroundColor Cyan
-
-# Set execution policy if needed
 try {
-    if ((Get-ExecutionPolicy -Scope CurrentUser) -eq 'Restricted') {
-        Write-Host "`nSetting execution policy to RemoteSigned for current user..." -ForegroundColor Yellow
-        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
-        Write-Host "✓ Execution policy updated." -ForegroundColor Green
-    }
+    Set-PowerShellProfile
+    Write-Host ""
+    Write-Host "PowerShell profile setup completed!" -ForegroundColor Green
+    Write-Host "Restart PowerShell or run '. `$PROFILE' to load the new profile" -ForegroundColor Yellow
 } catch {
-    Write-Host "⚠ Could not update execution policy. You may need to run this as administrator." -ForegroundColor Yellow
+    Write-Host "PowerShell profile setup failed: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
 }
-
-Write-Host "`nTo activate your new profile, restart PowerShell or run:" -ForegroundColor Cyan
-Write-Host ". `$PROFILE" -ForegroundColor White
-
-Write-Host "`nProfile features configured:" -ForegroundColor Green
-if ($rootRepo) { Write-Host "  • Startup directory: $rootRepo" }
-if ($reposPath) { Write-Host "  • Repositories folder: $reposPath (use 'repos' command)" }
-if ($scriptPath) { Write-Host "  • Scripts directory: $scriptPath" }
-Write-Host "  • Custom aliases and functions" 
-Write-Host "  • Oh-My-Posh theme integration"
-Write-Host "  • Chocolatey tab completion"
